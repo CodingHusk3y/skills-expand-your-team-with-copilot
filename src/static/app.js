@@ -40,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchQuery = "";
   let currentDay = "";
   let currentTimeRange = "";
+  let sharedActivityFromUrl = "";
 
   // Authentication state
   let currentUser = null;
@@ -50,6 +51,16 @@ document.addEventListener("DOMContentLoaded", () => {
     afternoon: { start: "15:00", end: "18:00" }, // After school hours
     weekend: { days: ["Saturday", "Sunday"] }, // Weekend days
   };
+
+  // Initialize state from share URL parameters
+  function initializeFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    sharedActivityFromUrl = params.get("activity") || "";
+    if (sharedActivityFromUrl) {
+      searchQuery = sharedActivityFromUrl;
+      searchInput.value = sharedActivityFromUrl;
+    }
+  }
 
   // Initialize filters from active elements
   function initializeFilters() {
@@ -359,6 +370,54 @@ document.addEventListener("DOMContentLoaded", () => {
       return "technology";
     }
 
+    function getActivityShareUrl(activityName) {
+      const shareUrl = new URL(window.location.href);
+      shareUrl.searchParams.set("activity", activityName);
+      return shareUrl.toString();
+    }
+
+    function buildShareText(activityName, details) {
+      return `Check out "${activityName}" at Mergington High School Activities! ${details.description}`;
+    }
+
+    async function handleShareActivity(platform, activityName, details) {
+      const shareUrl = getActivityShareUrl(activityName);
+      const shareText = buildShareText(activityName, details);
+
+      if (platform === "copy") {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          showMessage("Activity link copied to clipboard.", "success");
+        } catch (error) {
+          showMessage("Unable to copy link. Please try again.", "error");
+        }
+        return;
+      }
+
+      let targetUrl = "";
+      if (platform === "x") {
+        targetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+          shareText
+        )}&url=${encodeURIComponent(shareUrl)}`;
+      } else if (platform === "facebook") {
+        targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+          shareUrl
+        )}`;
+      } else if (platform === "email") {
+        targetUrl = `mailto:?subject=${encodeURIComponent(
+          `Check out this activity: ${activityName}`
+        )}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
+      } else {
+        return;
+      }
+
+      if (platform === "email") {
+        window.location.href = targetUrl;
+      } else {
+        window.open(targetUrl, "_blank", "noopener,noreferrer,width=600,height=500");
+      }
+    }
+
     // Default to "academic" if no match
     return "academic";
   }
@@ -552,6 +611,13 @@ document.addEventListener("DOMContentLoaded", () => {
             .join("")}
         </ul>
       </div>
+      <div class="share-buttons">
+        <span class="share-label">Share:</span>
+        <button class="share-button share-button-x" data-platform="x" aria-label="Share ${name} on X">X</button>
+        <button class="share-button share-button-facebook" data-platform="facebook" aria-label="Share ${name} on Facebook">f</button>
+        <button class="share-button share-button-email" data-platform="email" aria-label="Share ${name} by email">✉</button>
+        <button class="share-button share-button-copy" data-platform="copy" aria-label="Copy ${name} link">🔗</button>
+      </div>
       <div class="activity-card-actions">
         ${
           currentUser
@@ -586,6 +652,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     }
+
+    const shareButtons = activityCard.querySelectorAll(".share-button");
+    shareButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        handleShareActivity(button.dataset.platform, name, details);
+      });
+    });
 
     activitiesList.appendChild(activityCard);
   }
@@ -863,6 +936,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   checkAuthentication();
+  initializeFromUrl();
   initializeFilters();
   fetchActivities();
 });
