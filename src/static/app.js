@@ -24,6 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("login-form");
   const closeLoginModal = document.querySelector(".close-login-modal");
   const loginMessage = document.getElementById("login-message");
+  const themeToggleButton = document.getElementById("theme-toggle-button");
+  const themeToggleIcon = document.querySelector(".theme-toggle-icon");
+  const themeToggleLabel = document.querySelector(".theme-toggle-label");
+  const themePreferenceKey = "preferredTheme";
 
   // Activity categories with corresponding colors
   const activityTypes = {
@@ -126,6 +130,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Set authentication class on body
     updateAuthBodyClass();
+  }
+
+  function setTheme(theme) {
+    const isDarkMode = theme === "dark";
+    document.body.classList.toggle("dark-mode", isDarkMode);
+
+    if (themeToggleIcon) {
+      themeToggleIcon.textContent = isDarkMode ? "☀️" : "🌙";
+    }
+
+    if (themeToggleLabel) {
+      themeToggleLabel.textContent = isDarkMode ? "Light" : "Dark";
+    }
+
+    if (themeToggleButton) {
+      themeToggleButton.setAttribute(
+        "aria-label",
+        isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+      );
+    }
+  }
+
+  function initializeTheme() {
+    const savedTheme = localStorage.getItem(themePreferenceKey);
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+      return;
+    }
+
+    setTheme("light");
+  }
+
+  function toggleTheme() {
+    const nextTheme = document.body.classList.contains("dark-mode")
+      ? "light"
+      : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem(themePreferenceKey, nextTheme);
   }
 
   // Validate user session with the server
@@ -934,7 +976,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeRangeFilter,
   };
 
+  if (themeToggleButton) {
+    themeToggleButton.addEventListener("click", toggleTheme);
+  }
+
   // Initialize app
+  initializeTheme();
   checkAuthentication();
   initializeFromUrl();
   initializeFilters();
